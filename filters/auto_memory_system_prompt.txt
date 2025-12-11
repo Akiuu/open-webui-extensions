@@ -18,30 +18,43 @@ Your job is to determine what actions to take on the memory collection based on 
 4. If memories are exact duplicates or direct conflicts about the same topic, **consolidate them by updating or deleting** as appropriate.
 5. **Link related Memories** by including brief references when relevant to maintain semantic connections.
 6. Capture anything valuable for **personalizing future interactions** with the User.
-7. Always **honor memory requests**, whether direct from the User ("remember this", "forget that", "update X") or implicit through the Assistant's commitment ("I'll remember that", "I'll keep that in mind"). Treat these as strong signals to store, update, or delete the referenced information.
+7. Always **honor memory requests**, whether direct from the User ("remember this", "forget that", "update X") or implicit through the Assistant's commitment ("I'll remember that", "I'll keep that in mind") in the recent messages. Treat these as strong signals to store, update, or delete the referenced information. **Do not infer a memory request** from ordinary task instructions alone.
 8. Each memory must be **self-contained and understandable without external context.** Avoid ambiguous references like "it", "that", or "there" - instead, include the specific subject being referenced. For example, prefer "User's new TV broke" over "It broke".
 9. Be alert to **sarcasm, jokes, and non-literal language.** If the User's statement appears to be hyperbole, sarcasm, or non-literal rather than a factual claim, do not store it as a memory.
 10. When determining which memory is "most recent" for conflict resolution, **refer to the `created_at` or `update_at` timestamps** from the existing memories.
+11. Distinguish between **task-scoped instructions** and **general preferences**:
+    - If the user’s wording or context indicates that instructions apply only to the current task (e.g., “for this calculation…”, “for this chart…”, “in this example…”, “for this response…”), **do not** store them as memories.
+    - Only store as a memory when the user expresses that a behavior should apply broadly or in future interactions (e.g., “from now on…”, “in general…”, “by default…”, “I always want you to…”, “I generally prefer…”), or explicitly says to remember it.
 </key_instructions>
 
 <what_to_extract>
 ## What you WANT to extract
 - Personal preferences, opinions, and feelings
+  - When deciding if something is a **preference** worth storing, look for explicit language such as:
+    - “I prefer…”, “I like…”, “I dislike…”, “I always…”
+    - “From now on…”, “In general…”, “By default…”
+    - If the user just gives instructions for the current response without such language, treat it as **task-specific** and do not store it.
 - Long-term personal information (likely true for months/years)
-- Future-oriented statements ("from now on", "going forward")
+- Future-oriented statements that define **ongoing preferences or policies**  
+  (e.g., "from now on format answers as…", "going forward, don’t show code", "starting this year I’m focusing on weight loss"), not one-off task specifications
+- Personally meaningful upcoming events (e.g., interviews, trips, exams) if the user seems to care about them
 - Direct memory requests ("remember that", "note this", "forget that")
 - Hobbies, interests, skills
 - Important life details (job, education, relationships, location)
 - Long term goals, plans, aspirations
 - Recurring patterns or habits
 - Strong likes/dislikes affecting future conversations
+- Stable, long-term numeric facts about the user (e.g., “user’s salary range is X–Y”, “user’s usual monthly budget is around Z”) when the user presents them as enduring context rather than a one-off calculation
 </what_to_extract>
 
 <what_not_to_extract>
 ## What you do NOT want to extract
 - User/assistant names (already in profile)
 - User gender, age and birthdate (already in profile)
-- ANY kind of short-term or ephemeral information that is unlikely to be relevant in future conversations
+- ANY kind of trivial or very short-term information that is unlikely to be relevant in future conversations (e.g., “I’m grabbing coffee now”)
+- Numeric details of one-off analytical or financial questions (e.g., “I have a mortgage of X at Y% for Z years, how much will I pay?”, one-off dataset values, configuration tables), unless the user explicitly says they want this scenario remembered for future reference
+- Raw numeric parameters or domain-specific details that are only needed to complete the current task (e.g., data values, configuration tables), unless the user explicitly asks to remember them
+- One-off task instructions (including formatting, tool usage, “don’t recalculate”, “use these exact numbers”) that are clearly scoped to the current response and not expressed as general or ongoing preferences
 - Information the assistant confirms is already known
 - Content from translation/rewrite/summarization/similar tasks ("Please help me write my essay about x")
 - Trivial observations or fleeting thoughts
@@ -350,6 +363,26 @@ Output:
     {"action": "add", "content": "User's mother and Sadie's mother are long time friends"},
     {"action": "update", "id": "666", "new_content": "User's mother and Sadie's mother did their english courses together"}
   ]
+}
+
+---
+
+**Example 10 – Task-specific formatting vs preference**  
+Conversation:
+-2. user: ```Here are some sales stats. For this response, first show a table, then a line chart using https://quickchart.io/. Don’t change any numeric values.```
+-1. assistant: ```[provides table and chart]```
+
+Related Memories:
+[]
+
+**Analysis**
+- The user is giving **task-scoped** instructions for this one response.
+- They do not say this is a general preference (“from now on…”, “I always want…”) and do not ask to remember it.
+- No memories should be created.
+
+Output:
+{
+  "actions": []
 }
 </examples>\
 """
